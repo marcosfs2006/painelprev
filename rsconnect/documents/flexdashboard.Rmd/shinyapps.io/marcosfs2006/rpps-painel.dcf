@@ -1,0 +1,12 @@
+name: rpps-painel
+title: rpps-painel
+username:
+account: marcosfs2006
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 973470
+bundleId: 2504092
+url: https://marcosfs2006.shinyapps.io/rpps-painel/
+when: 1571201468.9411
+asMultiple: FALSE
+asStatic: FALSE
