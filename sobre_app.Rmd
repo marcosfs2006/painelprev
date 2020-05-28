@@ -1,0 +1,118 @@
+
+`r tags$h1("Em elaboração...")`
+
+</br>
+
+`r tags$h3("Objetivos")`
+
+O **PainelPrevRPPS** é um aplicativo que tem 2 objetivos: **(1)** apresentar dados previdenciários de uma forma simples e **(2)** verificar se o RPPS está cumprindo algumas exigências feitas pela legislação previdenciária como, por exemplo, encaminhar o DAIR à SPrev mensalmente.
+
+O aplicativo pode ser útil aos gestores de RPPS, aos membros dos conselhos deliberativos e ao público em geral. 
+
+Na sua versão atual, o aplicativo está "dividido" em seis "módulos": **CRP**, **DAIR**, **DIPR**, **PARCELAMENTOS**, **DRAA** e **ISP**. Além desses módulos há um item denominado **INFO** que levará á uma página contendo os detalhes técnicos de como os dados apresentados no painal são elaborados. Este item buscar dar transparência ao que é apresentado. 
+
+Vamos explicar um pouquinho o que contém cada "módulo".
+
+É importante observar que algumas informações irão depender apenas da seleção da UF, outras vão depender tanto da UF como do Ente selecionados e outras não dependendem dessas informações. 
+
+</br>
+
+`r tags$h3("Módulo CRP")`
+
+Neste módulo são apresentados dados relativos ao [**Certificado de Regularidade Previdenciária - CRP**](http://www1.previdencia.gov.br/sps/app/crp/cartilhaCRP.html). Neste módulo, o usuário pode consultar a situação do Ente em relação ao CRP, isto é, se o Ente está com o CRP válido ou não.
+
+Entes com CRP inválido ficam sujeitos a várias restrições, que incluem, entre outras, não poder receber transferências voluntárias da União.
+
+Neste módulo o usuário irá encontrar 4 abas:
+
+* **CRP VENCIDO E JUDICIAL POR UF** - Esta aba apresenta uma tabela com dados que independem da UF ou Ente que estejam selecionados. Ela mostra o quantitativo de Entes com CRP vencido em cada unidade da federação e em uma determinada data de referência, que é data em que os dados foram extraídos.
+
+* **GRÁFICO ESCALONAMENTO** - Nesta aba, apesenta-se um gráfico de barras que mostra o quantitativo de Entes na UF selecionada que estão com o CRP vigente (A VENCER) e vencidos segundo um determinado escalonamento de quantidade de dias vencido com base na data de referência.
+
+*  **CRP VENCIDO** - Nesta aba apresenta-se a relação dos Entes da UF selecionada que estão com seus CRPs vencidos. Por estarem com irregularidades não conseguem atualizar o CRP.
+
+* **CRP JUDICIAL** - Nesta aba apresenta-se a relação dos Entes da UF selecionada que possuem CRP vigentes porém obtidos por intermédio de ação judicial. São entes com irregularidade em relação ao CRP mas que conseguiram a emissão do mesmo recorrendo à via judicial. 
+
+
+</br>
+
+`r tags$h3("Módulo DAIR")` 
+
+Este módulo apresenta dados e checagens que têm relação com o **Demonstrativo das Aplicações e Investimentos dos Recursos - DAIR**. Neste demonstrativo, que os RPPS devem encaminhar mensalmente à Secretaria de Previdência Social, são elencados entre outras coisas, todos os ativos nos quais os RPPS fizeram investimentos de recursos. Este módulo apesenta 9 abas, cujo conteúdo explicitamos a seguir:
+
+* **ENTREGA DAIR** - Esta aba mostra ao usuário se o Ente está encaminhando o DAIR à SPrev.
+
+* **ATIVOS GARANTIDORES** - Nesta aba o usuário pode ver um gráfico da evolução dos ativos garantidores do Ente selecionado. 
+
+* **FUNDOS VEDADOS** - Esta aba mostra se o Ente tem recursos financeiros aplicados em fundos de investimentos nos quais são vedadas aplicações de recursos pelos RPPS.
+
+* **PERFIL INVEST.** - 
+
+* **VISUALIZAÇÃO PERFIL** - 
+
+* **ENQUAD. FI** -  Esta aba mostra uma relação dos Entes da UF selecionada para os quais foram identificados fundos de investimentos para os quais a classificação constante do DAIR diverge da classificação indicada pela SPrev.
+
+* **COMPOSIÇÃO DA CARTEIRA** - 
+
+* **LIMITES RESOL.3933** - Esta aba mostra se os RPPS estão realizando aplicações de recursos obedecendo os limites estabelecidos pela Resolução CMN 3.922/20.
+
+* **ART. 15 RES. 3922/10** - Esta aba mostra a relação dos Entes da UF selecionada que possuem aplicações de recursos em fundos de investimentos que não atendam ao art. 15 da Resolução 3.922/10.     
+
+
+</br>
+
+`r tags$h3("Módulo PARCELAMENTOS")`
+
+Este módulo tem por objetivo apresentar a situação dos Entes em relação aos termos de parcelamento de débitos celebrados e que ainda estejam vigentes na data de divulgação dos dados.
+
+Este módulo apresenta duas abas:
+
+* **CONSOLIDAÇÃO DOS ACORDOS** - Esta aba apresenta, para a UF selecionada, a relação dos Entes com termos de parcelamento de débito vigentes com informações sobre a quantidade de termos de parcelamento em vigor, o valor total devido, etc.
+
+* **RELAÇÃO DOS ACORDOS DO ENTE** - Esta aba apresenta, para o Ente selecionado, a relação individualizada dos acordos de parcelamento celebrados em vigor. 
+
+
+</br>
+
+`r tags$h3("Módulo DRAA")`
+
+Este módulo apresenta as seguintes abas:
+
+* **ENTREGA DRAA** - Nesta aba é apresentada a relação dos Entes na UF selecionada, e a situação quanto ao encaminhamento do DRAA à SPrev relativo à Avaliação Atuarial de 2019. 
+
+* **BALANÇO ATUARIAL - PREVIDENCIÁRIO** -    
+
+* **BALANÇO ATUARIAL - FINANCEIRO** -    
+
+
+</br>
+
+`r tags$h3("Módulo ISP")`
+
+Este módulo tem por objetivo apresentar graficamente o **Indicador de Situação Previdenciária - ISP**. Apresenta um `boxplot` com os valores do ISP de todos os entes da UF selecionada e, destacado em vermelho, o valor do indicador para o Ente selecionado.
+
+O objetivo é oferecer uma ideia de como o ISP do ente selecionado se compara com o ISP dos demais entes da UF selecionada.
+
+</br>
+
+`r tags$h3("Documentação das Análises - ADPrev")`
+
+Foi elaborado um documento onde se apresenta algumas análises possíveis de serem feitas com os dados previdenciários disponibilizados pela SPrev. Este documento pode ser consultado no seguinte link: <https://www.rpubs.com/marcosfs2006/ADPrev>
+
+O objetivo é que as análises e os dados utilizados no aplicativo sejam explicitados da forma a mais detalhada possível para que o leitor saiba exatamente o que está sendo feito.  
+
+Para as pessoas interessadas ver os _script_  utilizados no aplicativo e que queiram contribuir com o projeto, o repositório do aplicativo no GitHub é <https://github.com/marcosfs2006/painelprev>
+
+
+</br>
+
+`r tags$h3("Contato")`
+
+Dúvidas ou solicitação de informações adicionais podem ser encaminhadas para `marcosfs2006@gmail.com`.
+
+Caso prefira, o usuário poderá encaminhar suas contribuições para o aperfeiçoamento deste aplicativo clicando no link abaixo e encaminhando suas sugestões no formulário.
+
+<https://forms.gle/cPKG1RmyJZ1tAjFu9>
+
+
+

@@ -10,3 +10,7 @@ Trata-se de um trabalho em elaboração e que será aperfeiçoado com as crític
 # Documentação
 
 A documentação relativa a construção de gráficos e tabelas apresentados no painel estão contidas no documento denominado [**Análise de Dados Previdenciários - ADPrev**](http://www.rpubs.com/marcosfs2006/ADPrev).
+
+O repositório dos arquivos Rmd deste documento pode ser encontrado em <https://github.com/marcosfs2006/ADPrev>
+
+

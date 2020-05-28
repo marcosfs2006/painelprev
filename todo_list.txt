@@ -1,0 +1,93 @@
+https://www.investidor.gov.br/menu/Menu_Investidor/fundos_investimentos/carteira_composicao.html
+
+# Link para o projeto no RStudio Cloud
+https://rstudio.cloud/project/1304153
+
+git@github.com:marcosfs2006/rede-rpps.git
+https://github.com/marcosfs2006/rede-rpps.git
+
+
+https://youtu.be/14YOIfbmHlU
+
+To do list:
+
+
+########################## Sugestões feitas por outras pessoas:
+
+
+1. Na tebela dos CRP vencidos e judiciais, colocar uma coluna com os CRP válidos não judiciais e a relação dos mesmos. (Wilson TCE CE - Via Zap)
+2. No quadro de entrega do DIPR incluir se a entrega foi feita no prazo ou com atraso. Usar o campo `data da informacao`.
+
+ - Usar plotly ou outro pacote para os gráficos (gráficos interativos).
+ - Tratar a questão dos RPPS que possuem niveis diferenciados de percentuais...Nivel I, II, III, IV
+ - Calcular os limites de aplicações da Resolução 3922/10 utilizando o enquadramento da SPrev e não apenas o enquadramento feito pelo RPPS
+ - Verificar se houve RPPS que investiu recursos em fundos vedados após abril de 2018 (ver se houve aumento na quantidade de cotas)
+
+
+# Coisas que eu já vi que é necessário fazer:
+
+=== DAIR ===
+
+* Ativos Garantidores
+  - legenda: trocar o título da legenda de 'tipo' para algo como 'Tipo de Ativo' [XXXX]
+
+* Perfil dos Investimentos
+  - reverter os meses [XXXXX]
+
+* Visualização perfil
+  - colocar em cores diferentes renda fixa e renda variável
+  - mudar os nomes dos titulos das legendas
+
+* Enquadramento
+  - motrar a divergência para o mês mais recente
+  - incluir uma coluna com a quantidade de meses em que houve divergência
+
+* Composição da Carteira
+  - tá lenta a geração dos gráficos
+  - formatar eixo y
+  - alterar título da legenda e nomes apresentados
+  - alterar as cores
+
+* Limites Res. 3922/10
+
+* Art. 15
+
+
+
+=== DIPR ===
+
+* Receitas e Despesas
+  - 
+
+* Contribuições
+  - mudar o nome da aba para 'Contribuições Recebidas'
+  - alterar valores da legenda
+
+* Segregação Massas
+  - tirar o botão do Excel
+
+* Compensação Previdenciária
+  - reverter os meses XXXX
+
+* Qtd. Servidores Ativos
+  - 
+
+* Recebimento de Parcelamentos
+  - 
+
+
+=== DRAA ====
+
+* Entrega DRAA
+
+  - Incluir na aba entrega do DRAA um texto antes da tabela da seguinte forma:
+xx% dos Entes desta Unidade Federativa não entregaram o DRAA até a data de referência da base de dados.
+
+
+* Balanço Atuarial - Previdenciário
+
+  - Aumentar o tamanho da janela do balanço atuarial previdenciário. Tá cortando o final.
+
+* Balanço Atuarial - Financeiro
+  - 
+

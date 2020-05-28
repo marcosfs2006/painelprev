@@ -1,0 +1,1234 @@
+---
+title: "PainelPrevRPPS"
+output:
+  flexdashboard::flex_dashboard:
+    navbar:
+    - { title: "INFO", href: "http://rpubs.com/marcosfs2006/ADPrev", align: left }
+    vertical_layout: scroll
+    source_code: https://github.com/marcosfs2006/painelprev
+    logo: figuras/rede-rpps2.png
+runtime: shiny
+---
+
+```{r global, include=FALSE}
+options(warn = -1, width=180, scipen = 999, OutDec =",", digits=15)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, comment = NA, scipen=999)
+
+library(readxl)
+library(readr)
+library(dplyr)
+library(lubridate)
+library(knitr)
+library(tidyr)
+library(ggplot2)
+library(flexdashboard)
+library(DT)
+library(stringr)
+library(scales)
+library(purrr)
+library(htmlTable)
+library(tibble)
+
+# Nota: Todo o pré-processamento dos dados brutos  disponbilizados pela SPrev
+#       para o formato Rds nos quais são aqui importados são feitos
+#       utilizando-se o script "etl_painelprev_v2-FEV2020.R"
+
+
+
+### IMPORTAÇÕES DE DADOS =======================================================
+
+# Importa a relação de RPPS brasileiros
+source("1_importa_cadastro.R")
+
+# Importa dados CRP - Atualização de FEV-2020 - Data de extração: 17/03/2020 - 
+source("2_importa_crp.R")
+
+# Importa dados do DIPR - Atualização de FEV-2020 (Dados de 2018 e 2019)
+source("3_importa_dipr.R")
+
+# Importa dados dos Parcelamentos - Atualização de FEV-2020
+source("4_importa_parcelamentos.R")
+
+
+# Importa dados do DAIR e arquivos relacionados (Fundos Vedados, Enquadramento, Limites)
+source("5_importa_dair.R")
+
+
+# Importa dados do Indicador de Situação Previdenciária - ISP 2018.01
+source("6_importa_isp.R")
+
+# Importa dados do DRAA
+source("7_importa_draa.R")
+
+```
+
+
+
+Sidebar {.sidebar}
+===================================
+
+```{r}
+# Relação da Unidades da Federação
+lista_uf <- sort(unique(cadastro$uf)) 
+
+# Relação das UF
+selectInput("UF", label = "Selecione a UF:", choices = lista_uf)
+
+# Relação dos RPPS
+uiOutput("municipios")
+
+# Preciso saber o nome do Ente...
+output$municipios <- renderUI(
+    selectInput(inputId = "municipios",
+                  label = "Selecione o Ente:",
+                  choices = as.list(cadastro$ente[cadastro$uf == input$UF]))
+                )
+
+```
+
+
+
+CRP {.tabset .tabset-fade}
+================================================================================
+
+crp {.tabset .tabset-fade}
+--------------------------------------------------------------------------------
+
+###  **CRP POR UF** 
+
+Quantidade de Entes com CRP vencido e judicial.
+
+A data de referência é: **`r dt_extracao`** (Data de Extração dos Dados)
+
+
+```{r}
+
+# Quantidade de Entes com CRP vencido e judicial e percentual
+
+qtd_crp_uf <- crp %>%
+                group_by(uf) %>%
+                summarise(QtdRPPS = n(),
+                          QtdRPPS_CRPVencido  = sum(situacao == "VENCIDO"),
+                          PctRPPS_CRPVencido  = round(QtdRPPS_CRPVencido / QtdRPPS * 100, 2),
+                          QtdRPPS_CRPJudicial = sum(judicial == "SIM" & situacao == "VÁLIDO"),
+                          PctRPPS_CRPJudicial = round(QtdRPPS_CRPJudicial / QtdRPPS * 100, 2)) %>%
+                arrange(desc(PctRPPS_CRPVencido)) 
+
+
+# Elaboração da tabela de Entes com CRP Vencidos por UF
+renderDataTable(datatable(qtd_crp_uf,
+                          rownames=FALSE,
+                          colnames =  c("QTD. RPPS", "QTD. CRP VENCIDO", "PCT CRP VENCIDO", "QTD. CRP JUDICIAL", "PCT. CRP JUDICIAL")))
+
+```
+
+### **GRÁFICO ESCALONAMENTO**
+
+A data de referência é: **`r dt_extracao`** (Data de Extração dos Dados)
+
+```{r}
+crp_escalonamento_uf <- reactive({
+
+  req(input$UF)
+
+  crp %>%
+    filter(uf == input$UF) %>%
+    group_by(categoria) %>%
+    summarise(frequencia = n()) 
+})
+
+renderPlot({
+
+    ggplot(crp_escalonamento_uf(), aes(x=categoria, y=frequencia)) +
+    geom_bar(stat="identity", fill="orange") +
+    geom_text(aes(label=frequencia), color="blue", vjust = 0, hjust=1, size=4) +
+    coord_flip() +
+    ylab("Qtd. de Entes") +
+    xlab(" ")
+  
+})
+```
+
+
+### **CRP VENCIDO**
+
+A data de referência é: **`r dt_extracao`** (Data de Extração dos Dados)
+
+```{r}
+crp_vencido <- reactive({
+  
+  req(input$UF)
+  
+crp %>%
+  ungroup() %>%
+  filter(uf == input$UF, situacao == "VENCIDO") %>%
+  select(ente, num_crp, dt_emissao, dt_validade, categoria) %>%
+  arrange(desc(dt_validade)) 
+
+})  
+  
+renderDataTable(datatable(crp_vencido(),
+                          rownames = FALSE,
+                          colnames =  c("ENTE", "NR CRP", "DATA EMISSÃO", "DATA VALIDADE", "SITUAÇÃO")))  
+  
+```
+
+
+### **CRP JUDICIAL**
+
+A data de referência é: **`r dt_extracao`** (Data de Extração dos Dados)
+
+
+```{r}
+crp_judicial <- reactive({
+  
+  req(input$UF)
+
+crp %>%
+  ungroup() %>%
+  filter(uf == input$UF, judicial == "SIM", situacao == "VÁLIDO") %>%
+  select(ente, num_crp, dt_emissao, dt_validade) %>%
+  arrange(desc(dt_validade)) 
+})
+
+
+renderDataTable(datatable(
+  
+  crp_judicial(),
+  rownames = FALSE,
+  colnames = c("ENTE", "NR CRP", "DATA EMISSÃO", "DATA VALIDADE")
+  
+))
+
+```
+
+
+
+DAIR {.tabset .tabset-fade}
+==================================
+
+dair {.tabset .tabset-fade}
+------------------------------------
+
+<!--
+
+A fazer: colocar em algum lugar um texto explicando cada tipo de ativo
+
+-->
+
+
+
+### **ENTREGA DAIR**
+
+```{r}
+
+tab_entrega_dair <- reactive({
+
+cadastro %>%
+  select(ente, uf) %>%
+  left_join(dair[, c("ente", "uf", "competencia")], by=c("ente", "uf")) %>%
+  mutate(entregou = "X") %>%
+  arrange(desc(competencia)) %>% 
+  filter(uf == input$UF) %>%
+  distinct() %>%
+  pivot_wider(names_from = competencia,
+              values_from = entregou,
+              values_fill = list(entregou = "-")) %>% 
+  select_if(names(.) != "NA")
+
+})
+
+
+renderDataTable(datatable(
+
+  tab_entrega_dair(),
+  rownames = FALSE,
+  colnames = c("ENTE", "UF", format(as.Date(names(tab_entrega_dair())[-c(1, 2)]), "%m/%y"))
+
+))
+
+
+```
+
+
+### **ATIVOS GARANTIDORES** 
+
+
+```{r}
+
+# A base "ativos_garantidores" é produzida no script auxiliar
+
+# E se for selecionado um Ente que não está na base do DAIR? Mostrar uma mensagem avisando isso...
+
+tab_ativos_garantidores <- reactive({
+  
+  req(input$UF)
+  req(input$municipios)
+  
+  ativos_garantidores %>%
+    filter(uf == input$UF, ente == input$municipios)
+
+})  
+  
+renderPlot({
+
+ggplot(tab_ativos_garantidores(),aes(x=competencia, y=vlrAtivoTotal, group=tipo, color=tipo)) +
+    geom_line(size=1) +
+    geom_point(size=3) +
+    scale_y_continuous(labels = label_number(prefix = "R$ ", big.mark = ".", decimal.mark = ",")) +
+    xlab("") + ylab("") +
+    theme_bw()+
+    theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
+    scale_x_date(date_breaks="1 month", labels = date_format("%Y-%m"))
+    
+  
+})  
+
+
+#scale_x_date(NULL,
+#                 breaks = breaks_width("1 month"), 
+#                 labels = label_date_short()) +
+
+```
+
+
+### **FUNDOS VEDADOS**
+
+Relação de Entes com aplicações em fundos de investimentos vedados. 
+
+```{r}
+
+# Aplicação de filtro
+
+tab_invest_fv <- reactive({
+  
+  req(input$UF)
+  
+  invest_fv %>%
+    filter(uf == input$UF) %>%
+    select(ente, ident_ativo, nm_ativo) %>%
+    distinct() 
+
+})
+
+# Mostrar a tabela de dados.
+renderDataTable(datatable(tab_invest_fv(),
+                          rownames = FALSE,
+                          colnames = c("Ente", "CNPJ Fundo", "Nome do Fundo")))
+
+```
+
+
+
+### **PERFIL DOS INVESTIMENTOS**
+
+```{r}
+
+tab_invest_ente <- reactive({
+
+  req(input$UF)
+  req(input$municipios)
+  
+  dair %>%
+      filter(uf == input$UF,
+             ente == input$municipios,
+             competencia >= as.Date("2018-04-01")) %>%
+      select(competencia, tipo_ativo, vlr_total_atual) %>%
+      group_by(competencia, tipo_ativo) %>%
+      summarise(vlr_total_atual = sum(vlr_total_atual, na.rm = TRUE)) %>%
+      arrange(desc(competencia)) %>% 
+      spread(key = competencia, value = vlr_total_atual) # substituir por 'pivot_wide()'
+})
+
+
+renderDataTable(
+  
+  datatable(
+    tab_invest_ente(),
+    rownames = FALSE,
+    colnames = c("Tipo Ativo", str_to_title(format(as.Date(names(tab_invest_ente())[-1]), "%b/%y")))
+  ) %>%
+  formatCurrency(columns = -1,
+                 currency = "",
+                 interval = 3,
+                 mark = ".",
+                 digits = 2,
+                 dec.mark = ",",
+                 before = TRUE) 
+)
+
+# Reverter a ordem dos meses...
+```
+
+
+
+### **VISUALIZAÇÃO PERFIL**
+
+<!-- separar renda fixa e renda variável -->
+
+```{r}
+tab_perfil <- reactive({
+  
+  req(input$UF)
+  req(input$municipios)
+  
+  dair %>%
+    filter(uf == input$UF, ente == input$municipios, grepl("\\d{14}", ident_ativo)) %>%
+    mutate(fundos = paste(str_trunc(nm_ativo, 20), " [", ident_ativo, "]", sep = "")) %>% 
+    group_by(competencia, fundos) %>%
+    summarise(vlr_total_atual = sum(vlr_total_atual, na.rm = TRUE)) %>%
+    ungroup() %>%
+    group_by(competencia) %>%
+    mutate(pct_aplic_fundo = vlr_total_atual / sum(vlr_total_atual, na.rm = TRUE),
+           vedado = ifelse(gsub(".*\\[(.*)\\]", "\\1", fundos) %in% fundos_vedados$`CNPJ DO FUNDO`, "Vedado", "Permitido")) 
+
+})
+
+
+# Elaborar o gráfico
+renderPlot({
+
+  ggplot(tab_perfil(), aes(x=competencia, y=fundos, size=pct_aplic_fundo, colour=factor(vedado))) +
+    geom_point() +
+    xlab("") + ylab("") +
+    scale_color_manual(values = c("lightblue", "tomato")) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
+    scale_x_date(date_breaks="1 month", labels = date_format("%Y-%m")) 
+    
+})
+
+
+```
+
+
+
+### **ENQUADRAMENTO**
+
+```{r}
+
+tab_divergencia_enquad_rpps <- reactive({
+  
+  req(input$UF)
+  req(input$municipios)
+
+divergencias_enquadramento %>%
+        filter(uf == input$UF,
+               ente == input$municipios) %>%
+        select(ente, competencia, ident_ativo, nm_ativo, tipo_ativo, enquad_sprev) %>%
+        arrange(competencia)
+
+})
+
+
+# Tabela com os valores.
+renderDataTable(datatable(
+  
+  tab_divergencia_enquad_rpps(),
+  rownames = FALSE,
+  colnames = c("Ente", "Competência", "CNPJ Fundo", "Nome Fundo", "Enquadramento RPPS", "Enquadramento SPREV")
+  
+))
+
+```
+
+
+### **COMPOSIÇÃO DA CARTEIRA**
+
+```{r}
+
+tab_limites_agreg <- reactive({
+  
+  req(input$UF)
+  req(input$municipios)
+
+  dair_limites_agreg %>%
+  filter(uf == input$UF, ente == input$municipios) 
+    
+})    
+
+
+renderPlot({
+  
+  ggplot(tab_limites_agreg(),aes(x=competencia, y=pctVlrTotalAtivo, group=classificacao, color=classificacao)) +
+  geom_line(size=1) +
+  geom_point(size=3) +
+  xlab("") + ylab("Percentual dos Ativos Totais") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
+  scale_x_date(date_breaks="1 month", labels = date_format("%Y-%m"))
+  
+
+})
+
+```
+
+
+
+### **LIMITES RES. 3922/10**
+
+```{r}
+tab_limites_res_cmn <- reactive({
+  
+  req(input$UF)
+  req(input$municipios)
+  
+  dair_limites_agreg_liq %>%
+    filter(uf == input$UF, ente == input$municipios)
+})  
+  
+renderPlot({
+  
+  ggplot(tab_limites_res_cmn(),aes(x=competencia, y=pctVlrTotalAtivoLiq)) +
+    geom_point() +
+    facet_wrap( ~ classificacao) +
+    geom_hline(aes(yintercept = limite), color="blue") +
+    labs(title = "Evolucao do Percentual Aplicado por Tipo de Ativo",
+         y = '% Aplicado', x=" ") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
+    scale_x_date(date_breaks="1 month", labels = date_format("%Y-%m"))
+
+})
+
+```
+
+
+
+### **VEDAÇÃO ART. 15 RES. 3922/10**
+
+```{r}
+
+tab_nao_atende_art15 <- reactive({
+       
+   nao_atende_art15 %>% 
+      filter(uf == input$UF,
+             ente == input$municipios,
+             !is.na(nm_fundo)) %>%   # Alguns fundos não puderam ser identificados
+      select(ente, uf, ident_ativo, nm_fundo, cnpj_admin, cnpj_gestor) %>%
+      distinct(ente, ident_ativo, .keep_all = TRUE) %>%
+      arrange(ente)
+  
+  
+})
+
+  
+renderDataTable( datatable(
+  
+  tab_nao_atende_art15(),
+  rownames = FALSE, 
+  colnames = c("Ente", "UF", "CNPJ Fundo", "Nome Fundo", "CNPJ Adm.", "CNPJ Gestor")
+
+))  
+
+
+```
+
+
+
+
+DIPR {.tabset .tabset-fade}
+===================================
+
+dipr {.tabset .tabset-fade}
+------------------------------------
+
+<!--
+
+todo:
+Dar uma mensagem caso seja selecionado um Ente que não tenha encaminhado nenhum DIPR
+
+-->
+
+### **ENTREGA DIPR**
+
+Acompanhamento de entrega do DIPR à SPrev.
+
+O **X** indica que o RPPS entregou o DIPR no mês correspondente.
+
+
+```{r}
+
+entrega_dipr <- reactive({ 
+
+  req(input$UF)
+
+  cadastro %>%
+  select(ente, uf) %>%
+  left_join(dipr[, c("ente", "uf", "competencia")], by=c("ente",  "uf")) %>%
+  mutate(entregou = "X",
+         competencia = as.Date(paste("01", competencia, sep="/"), "%d/%B/%Y")) %>%
+  arrange(desc(competencia)) %>% 
+  filter(uf == input$UF) %>%
+  distinct() %>%
+  pivot_wider(names_from = competencia,
+              values_from = entregou,
+              values_fill = list(entregou = "-")) %>% 
+  select_if(names(.) != "NA")
+  
+})
+
+# Exibe a tabela (centralizar o X na coluna...)
+renderDataTable(datatable(
+  
+  entrega_dipr(),
+  rownames = FALSE,
+  colnames = c("Ente", "UF", str_to_title(format(ymd(names(entrega_dipr())[-c(1,2)]), "%b/%y"))),
+  options = list(columnDefs = list(className = 'dt-center'))
+                          
+))
+
+```
+
+
+
+### **RECEITAS E DESPESAS**
+
+
+```{r}
+dipr_recdesp <- reactive({
+  
+  req(input$UF)
+  req(input$municipios)
+
+  dipr %>%
+  filter(uf == input$UF, ente == input$municipios) %>%
+  select(ente, competencia, plano_segreg, total_receita, total_despesa) %>%
+  mutate(competencia = as.Date(paste("01", competencia, sep = "/"), "%d/%B/%Y")) %>% 
+  pivot_longer(cols =c("total_receita", "total_despesa") ,
+               names_to = "tipo",
+               values_to = "valores")
+
+})
+
+
+renderPlot({
+  
+  ggplot(dipr_recdesp(),
+         aes(x=competencia, y=valores, group=tipo, color=tipo)) +
+  geom_line(size=1) +
+  geom_point(size=3) +
+  scale_y_continuous(labels = label_number(prefix = "R$ ", big.mark = ".", decimal.mark = ",")) +  
+  xlab("") +
+  ylab("") +
+  theme_bw() +  
+  scale_color_discrete(name = "Categoria", labels = c("Despesa Total", "Receita Total")) +
+  scale_x_date(date_breaks="1 month", labels = date_format("%Y-%m")) +
+  theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
+  facet_wrap( ~ plano_segreg)
+  
+})
+
+
+```
+
+
+### **CONTRIBUIÇÕES** 
+
+<!--
+
+todo: se for apenas um gráfico, reduzir o tamanho.
+     se for selecionado um ente (por exemplo Campos dos Goytacazes) que não consta da
+     base de DIPR, colocar uma mensagem no dashboard
+
+-->
+
+```{r}
+
+teste <- function(x){!all(is.na(x))} #Selecionar apenas as colunas onde algum valor seja não NA
+
+dipr_contribuicoes <- reactive({
+
+  req(input$municipios)
+  req(input$UF)
+  
+  dipr %>%
+    filter(ente == input$municipios, uf == input$UF) %>%
+    select(competencia,
+           plano_segreg,
+           ct_pat_serv,
+           ct_pat_serv_ug,
+           ct_pat_apo,
+           ct_pat_pen,
+           ct_serv,
+           ct_apo,
+           ct_pen) %>%
+    select_if(teste) %>% 
+    gather(key=tipo, value=contribuicao, -competencia, -plano_segreg) %>%
+    mutate(competencia = as.Date(paste("01", competencia, sep = "/"), "%d/%B/%Y"))
+})
+
+
+# Gráfico dos dados acima.
+renderPlot({
+  
+  dipr_contribuicoes() %>%
+    ggplot(aes(x=competencia, y=contribuicao, group = tipo, color = tipo)) + 
+    geom_line(size=1) +
+    geom_point(size=3) +
+    scale_y_continuous(labels = label_number(prefix = "R$ ", big.mark = ".", decimal.mark = ",")) +
+    xlab("") +
+    ylab("") +
+    scale_color_discrete(name = "Contribuição") +
+    facet_wrap( ~ plano_segreg ) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+    scale_x_date(date_breaks="1 month", labels = date_format("%Y-%m"))
+    
+    
+})
+
+```
+
+
+
+
+### **SEGREGAÇÃO DE MASSAS**
+
+```{r}
+segregacao_massas <- reactive({
+                     dipr %>%
+                        filter(uf == input$UF) %>%
+                        select(ente, plano_segreg) %>%
+                        distinct() %>%
+                        mutate(plano = "X") %>%
+                        spread(key=plano_segreg, value=plano, fill = "-") 
+                      })
+
+renderDataTable({
+  datatable(segregacao_massas(),
+            rownames = FALSE,
+            extensions = 'Buttons',
+            options = list(columnDefs = list(list(className = 'dt-center', targets = 1:2)),
+                           dom = 'Blfrtip', # inclui o "l"
+                           buttons = 'excel')
+           )
+})
+
+```
+
+
+### **COMPENSAÇÃO PREVIDENCIÁRIA**
+
+```{r}
+
+comprev <- reactive({
+  
+  req(input$UF)
+  
+  dipr %>%
+    filter(uf == input$UF) %>%
+    select(ente, competencia, ing_comprev) %>% 
+    mutate(competencia = as.Date(paste("01", competencia, sep="/"), "%d/%B/%Y")) %>%
+    arrange(desc(competencia)) %>% 
+    group_by(ente, competencia) %>%
+    summarise(comprev = sum(ing_comprev, na.rm=TRUE)) %>%
+    spread(key=competencia, value=comprev)
+})
+  
+
+renderDataTable(
+ 
+  datatable(comprev(),
+            rownames = FALSE,
+            colnames = c("Ente", str_to_title(format(ymd(names(comprev())[-1]), "%b/%y")))) %>%
+  formatCurrency(columns = -1,
+                 currency = "",
+                 interval = 3,
+                 mark = ".",
+                 digits = 2,
+                 dec.mark = ",",
+                 before = TRUE)  
+)
+
+```
+
+
+
+### **QTD. SERVIDORES ATIVOS** 
+
+<!--
+
+incluir inativos e pensionistas
+
+-->
+
+```{r}
+dipr_qtdbenef <- reactive({
+  
+  req(input$UF)
+  req(input$municipios)
+
+  dipr %>%
+    filter(uf == input$UF, ente == input$municipios) %>%
+    select(competencia,
+           plano_segreg,
+           nb_serv,
+           nb_apos,
+           nb_pen,
+           nb_dep) %>%
+    mutate(competencia = as.Date(paste("01", competencia, sep = "/"), "%d/%B/%Y"))
+})
+  
+renderPlot({  
+    ggplot(dipr_qtdbenef() ,aes(x=competencia, y=nb_serv, group=1)) +
+    geom_line(size=1, color="blue") +
+    geom_point(size=3, color="blue") +
+    scale_y_continuous(labels = label_number(big.mark = ".", decimal.mark = ",")) +
+    xlab("") +
+    ylab("") +
+    facet_wrap(~ plano_segreg) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
+    scale_x_date(date_breaks="1 month", labels = date_format("%Y-%m"))
+
+})
+
+```
+
+
+### **RECEBIMENTO PARCELAMENTOS** {data-width=600}
+
+
+```{r}
+
+dipr_receita_parcelamentos <- reactive({
+  
+  req(input$UF)
+  req(input$municipios)
+  
+  dipr %>%
+    filter(uf == input$UF,
+           ente == input$municipios,
+           !is.na(parcelamentos) | !is.na(ing_parc)) %>%
+    select(ente,
+           competencia,
+           plano_segreg,
+           parcelamentos,
+           ing_parc) %>%
+    mutate(competencia = as.Date(paste("01", competencia, sep = "/"), "%d/%B/%Y")) 
+})
+
+  
+renderPlot({  
+
+  ggplot(dipr_receita_parcelamentos(), aes(x=competencia, y=parcelamentos)) +
+  geom_line(size=1, color = "blue") +
+  geom_point(size=3, color = "blue") +
+  scale_y_continuous(labels = label_number(prefix = "R$ ", big.mark = ".", decimal.mark = ",")) +
+  xlab("") +
+  ylab("") +
+  facet_wrap(~ plano_segreg) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust=0.5)) +
+  scale_x_date(date_breaks="1 month", labels = date_format("%Y-%m"))
+
+})
+
+```
+
+
+
+PARCELAMENTOS {.tabset .tabset-fade}
+==========================================
+
+parcelamentos {.tabset .tabset-fade}
+------------------------------------
+
+
+### **CONSOLIDAÇÃO DOS ACORDOS**
+
+Consolidação dos parcelamentos de débitos dos Entes da UF selecionada celebrados no período de 01/01/1996 a 04/02/2020. Posição em **Fev. 2020**. 
+
+Exclui parcelamentos não aceitos, repactuados e quitados.
+
+
+```{r}
+
+# Agregação dos parcelamentos 
+
+tab_parcel_ativos <- reactive({
+                        
+    req(input$UF)
+                      
+    parcel %>%
+      filter(uf == input$UF, !situacao %in% c("Não aceito", "Repactuado", "Quitado")) %>%  
+            #mutate(dt_fim = as.Date(dt_assin, format="%d/%m/%Y")  %m+% months(as.integer(qtd_parc))) %>%
+            #filter(ymd("2019-12-31") %within% interval(dmy(dt_assin), dt_fim)) %>% 
+      group_by(ente) %>%
+      summarise(qtd_acordos = n(),
+                valor_consolidado = sum(vlr_consolid, na.rm=TRUE),
+                sd_sem_atualiz = sum(sd_estim_satualiz, na.rm = TRUE),
+                percentual = round(sd_sem_atualiz / valor_consolidado * 100, 2)) %>%
+      arrange(desc(valor_consolidado))
+})
+
+
+
+renderDataTable(datatable(tab_parcel_ativos(),
+                          rownames = FALSE,
+                          colnames = c("Ente", "Qtd. Acordos", "Vlr. Consol.", "Sd. sem Atualiz.", "Percentual")) %>%
+                formatCurrency(columns=c(3, 4, 5),
+                               currency = "",
+                               interval = 3,
+                               mark = ".",
+                               digits = 2,
+                               dec.mark = ",",
+                               before = TRUE)
+                )
+
+```
+
+
+
+### **RELAÇÃO DOS ACORDOS DO ENTE**
+
+Relação dos parcelamentos ativos do Ente selecionado. Posição em **Fev. de 2020**. 
+
+Exclui parcelamentos não aceitos, repactuados e quitados.
+
+```{r}
+
+
+# Filtro dos parcelamentos
+parcel_ativos <- reactive({
+  
+  req(input$UF)
+  req(input$municipios)
+  
+  parcel %>%
+    filter(uf == input$UF,
+           ente == input$municipios,
+           !situacao %in% c("Não aceito", "Repactuado", "Quitado")) %>%   
+    select(ente,
+           situacao,
+           num_acordo,
+           dt_assin,
+           qtd_parc,
+           dt_venc_1a,
+           vlr_consolid,
+           sd_estim_satualiz) #%>%
+          #mutate(dt_fim = as.Date(dt_assin, format="%d/%m/%Y")  %m+% months(as.integer(qtd_parc))) %>%
+          #filter(ymd("2019-12-31") %within% interval(dmy(dt_assin), dt_fim)) # ativos em 31/12/2019 
+})
+
+
+
+renderDataTable(datatable(parcel_ativos(),
+                colnames=c("Ente",
+                           "Situação",
+                           "Num. Acordo",
+                           "Dt. Assin.",
+                           "Qtd. Parcelas",
+                           "Dt. Venc. 1a Parc.",
+                           "Vlr. Consolidado",
+                           "Sd. Estimado sem Atualiz."),
+                rownames = FALSE) %>%
+                formatCurrency(columns=c(7, 8),
+                               currency = "",
+                               interval = 3,
+                               mark = ".",
+                               digits = 2,
+                               dec.mark = ",",
+                               before = TRUE)  
+                )
+
+```
+
+
+
+
+
+DRAA {.tabset .tabset-fade}
+===================================
+
+draa {.tabset .tabset-fade}
+------------------------------------
+
+### **ENTREGA DRAA**
+
+```{r}
+entrega_draa <- reactive({ 
+
+ req(input$UF)
+
+cadastro %>%
+  select(ente, uf) %>%
+  filter(uf == input$UF) %>% 
+  left_join(draa_entes, by=c("ente", "uf"))
+
+})
+
+
+renderDataTable(datatable(
+  
+  entrega_draa(),
+  rownames = FALSE,
+  colnames = c("Ente", "UF", "Exercício", "Data Envio DRAA")
+                          
+))
+
+
+```
+
+
+### **BALANÇO ATUARIAL - PREVIDENCIÁRIO**
+
+
+```{r}
+
+dadosEnte <- reactive({
+  
+  req(input$UF)
+  req(input$municipios)
+  
+  draa_compromissos_2019 %>% 
+  filter(uf == input$UF,
+         ente == input$municipios,
+         tipo_plano == "Previdenciário") %>%  
+  select(codigo, vlr_geracao_atual) %>%
+  mutate(titulos = case_when(codigo == 500101 ~ "Renda Fixa",
+                             codigo == 500201 ~ "Renda Variável",
+                             codigo == 500301 ~ "Segmento Imobiliário",
+                             codigo == 500401 ~ "Ativos em Enquadramento",
+                             codigo == 500501 ~ "Títulos e Valores não Suj. ao Enq.",
+                             codigo == 509001 ~ "Demais Bens, Direitos e Ativos",
+                             codigo == 130201 ~ "VP Parcelamentos",
+                             codigo == 210000 ~ "VPBF_BC",
+                             codigo == 110000 ~ "VPCF_BC (-)",
+                             codigo == 220000 ~ "VPBF_BaC",
+                             codigo == 120000 ~ "VPCF_BaC (-)",
+                             codigo == 130101 ~ "VP Plano de Amortização Vigente")) %>%  
+  slice(match(contas_interesse, codigo)) %>%
+  select(titulos, vlr_geracao_atual)
+
+})
+
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
+# MONTANDO A TABELA DE SAIDA - DINÂMICA 
+
+# criar as totalizações dinâmicas...
+rgroup_add <- reactive(list(
+  
+                   `1` = prettyNum(sum(dadosEnte()$vlr_geracao_atual[1:6], na.rm = T), big.mark = "."),
+                   `2` = prettyNum(dadosEnte()$vlr_geracao_atual[7], big.mark = "."),
+                   `3` = prettyNum(dadosEnte()$vlr_geracao_atual[8] - dadosEnte()$vlr_geracao_atual[9], big.mark = "."),
+                   `4` = prettyNum(dadosEnte()$vlr_geracao_atual[10] - dadosEnte()$vlr_geracao_atual[11], big.mark = "."),
+                   
+                   `5` = prettyNum(sum(dadosEnte()$vlr_geracao_atual[1:6], na.rm = T) +
+                                       dadosEnte()$vlr_geracao_atual[7] -
+                                      (dadosEnte()$vlr_geracao_atual[8] - dadosEnte()$vlr_geracao_atual[9]) -
+                                      (dadosEnte()$vlr_geracao_atual[10] - dadosEnte()$vlr_geracao_atual[11]), big.mark = ".")
+                    )
+)
+
+# argumento a ser fornecido à função htmlTable()
+rgroup <- reactive({
+      xis <- c("Ativo Garantidor", "VP Parcelamentos", "RMBC", "RMBaC", "Resultado Atuarial") 
+      attr(xis, "add") <- rgroup_add()
+      xis
+})
+
+renderUI({
+
+  HTML(htmlTable(
+  dadosEnte() %>%
+  mutate(vlr_geracao_atual = prettyNum(vlr_geracao_atual, big.mark = ".")) %>% 
+  htmlTable(header = c("Título", "Saldo"),
+            rnames = FALSE, 
+            ctable = c("solid", "double"),
+            align = "lr",
+            caption = str_c("Plano Previdenciário: ", input$municipios),
+            tspanner = c("ATIVO", "PASSIVO"),
+            css.tspanner = "font-weight: 900; text-align: left; color:blue;",
+            n.tspanner = c(7,5),
+            rgroup = rgroup(),
+            css.rgroup = "font-weight: 900; text-align: left;",
+            n.rgroup = c(6, 1, 2, 2, 1))
+  ))
+
+})
+
+```
+
+
+### **BALANÇO ATUARIAL - FINANCEIRO**
+
+
+```{r}
+db <- reactive({
+
+  req(input$UF)
+  req(input$municipios)
+  
+
+draa_compromissos_2019 %>% 
+  filter(uf == input$UF,
+         ente == input$municipios,
+         tipo_plano == "Financeiro")
+  
+})  
+
+
+
+resultado <- reactive({
+  
+if(nrow(db()) == 0) {
+  
+  "O ENTE SELECIONADO NÃO TEM SEGREGAÇÃO DE MASSAS"
+  
+} else {
+
+  db() %>% #dadosEnte2 <- 
+  select(codigo, vlr_geracao_atual) %>%
+  mutate(titulos = case_when(codigo == 500101 ~ "Renda Fixa",
+                             codigo == 500201 ~ "Renda Variável",
+                             codigo == 500301 ~ "Segmento Imobiliário",
+                             codigo == 500401 ~ "Ativos em Enquadramento",
+                             codigo == 500501 ~ "Títulos e Valores não Suj. ao Enq.",
+                             codigo == 509001 ~ "Demais Bens, Direitos e Ativos",
+                             codigo == 210000 ~ "VPBF_BC",
+                             codigo == 110000 ~ "VPCF_BC (-)",
+                             codigo == 220000 ~ "VPBF_BaC",
+                             codigo == 120000 ~ "VPCF_BaC (-)")) %>%  
+  slice(match(c(500101, 500201, 500301, 500401, 500501, 509001, 210000, 110000, 220000, 120000), codigo)) %>%
+  select(titulos, vlr_geracao_atual)
+
+#dadosEnte2
+}
+  
+})
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# TABELA...
+
+renderUI({
+  
+  if(nrow(db()) == 0){
+    resultado()
+  } else {
+
+
+  rgroup_add2 <- reactive({list(
+  
+                   `1` = prettyNum(sum(resultado()$vlr_geracao_atual[1:6], na.rm = T), big.mark = "."),
+                   `2` = prettyNum(resultado()$vlr_geracao_atual[7] - resultado()$vlr_geracao_atual[8], big.mark = "."),
+                   `3` = prettyNum(resultado()$vlr_geracao_atual[9] - resultado()$vlr_geracao_atual[10], big.mark = "."),
+                   
+                   `4` = prettyNum(sum(resultado()$vlr_geracao_atual[1:6], na.rm = T)  -
+                                      (resultado()$vlr_geracao_atual[7] -  resultado()$vlr_geracao_atual[8]) -
+                                      (resultado()$vlr_geracao_atual[9] - resultado()$vlr_geracao_atual[10]), big.mark = ".")
+                    )
+})
+  rgroup2 <- reactive({
+      xis <- c("Ativo Garantidor", "RMBC", "RMBaC", "Resultado Atuarial") 
+      attr(xis, "add") <- rgroup_add2()
+      xis
+})
+  
+  HTML(htmlTable(
+  resultado() %>%
+  bind_rows(tibble(titulos = NA, vlr_geracao_atual = NA)) %>%   
+  mutate(vlr_geracao_atual = prettyNum(vlr_geracao_atual, big.mark = ".")) %>% 
+  htmlTable(header = c("Título", "Saldo"),
+            rnames = FALSE, 
+            ctable = c("solid", "double"),
+            align = "lr",
+            caption = str_c("Plano Financeiro: ", input$municipios),
+            tspanner = c("ATIVO", "PASSIVO"),
+            css.tspanner = "font-weight: 900; text-align: left; color:blue;",
+            n.tspanner = c(6, 5),
+            rgroup = rgroup2(),
+            css.rgroup = "font-weight: 900; text-align: left;",
+            n.rgroup = c(6, 2, 2, 1))
+  ))
+}
+
+})
+
+```
+
+
+```{r, eval=FALSE}
+
+relacao_rpps <- readRDS("cadastro_entes_DtRef_FEV2020.Rds")
+
+# juntar à base de dados a informação relativa a ter entregue ou não 
+relacao_rpps$tem_draa_2019 <- ifelse(relacao_rpps$CNPJ %in draa_compromissos_2019$cnpj, 1, 0)
+
+
+```
+
+
+
+
+
+ISP {.tabset .tabset-fade}
+===================================
+
+isp {.tabset .tabset-fade}
+-----------------------------------
+
+<!--
+
+TODO:
+Colocar um gráfico do isp do rpps em relação ao brasil
+Colocar um gráfico do isp do rpps em relação ao seu grupo no brasil
+      
+Os municipios de NOVA ITARANA - BA e
+BONITO-BA não estão aparecendo no gráfico do ISP. Verificar.
+
+Quando a UF tiver poucos rpps (< 5), não mostrar o boxplot,
+mostrar apenas os pontos.
+
+-->
+
+### Indicador Situação Previdenciária
+
+Indicador do RPPS em comparação com o indicador dos demais RPPS do Estado.
+
+
+```{r, fig.align='center'}
+
+isp_rpps <- reactive({
+  req(input$UF)
+  isp %>%
+     filter(UF == input$UF) 
+})
+
+renderPlot({
+
+  req(input$UF)
+  req(input$municipios)
+  
+     ggplot(isp_rpps(), aes(x=as.factor(UF), y=ISP201801)) +
+     geom_boxplot() +
+     labs(x="", y = "ISP") +
+     geom_dotplot(binaxis = "y", stackdir="center", fill="lightgray", color="lightgray") +
+     geom_point(y=isp$ISP201801[isp$ENTE == str_to_lower(input$municipios)], color="red", size=6, shape=20) +
+     theme_bw()
+  
+}, width =250)
+
+```
+
+SOBRE {.tabset .tabset-fade}
+===================================
+
+sobre {.tabset .tabset-fade}
+------------------------------------
+
+### **SOBRE O APLICATIVO**
+
+```{r, child="sobre_app.Rmd", eval=TRUE}
+
+```
+
+
+### **SOBRE MIM**
+
+```{r, child="sobre_mim.Rmd", eval=TRUE}
+
+```
+

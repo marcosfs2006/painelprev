@@ -1,0 +1,13 @@
+`r tags$h3("Algumas informações sobre mim")`
+
+Meus interesses no momento são a aplicação de métodos quantitativos em auditoria, o uso do software  R na análise de dados em auditoria e visualização de dados.
+
+Eu trabalho com controle externo e atualmente minha área de atuação é o controle dos Regimes Próprios de Previdência Social - RPPS.
+
+Minha formação é em estatística, mas trabalho muito mais com questões legais e contábeis do que com estatística.
+
+Mantenho uma página ( <https://www.audinalytics.com.br/> ) dedicada à aplicação de análise de dados em auditoria com R. Também tenho uma página no GitHub <https://marcosfs2006.github.io/> que no momento está em construção. Ainda não sei o que colocar lá.
+
+De vez em quando escrevo alguns tutoriais que podem ser vistos no RPubs <https://rpubs.com/marcosfs2006>. Meus repositórios no GitHub estão em <https://github.com/marcosfs2006>
+
+Sugestões de novas funcionalidades ou críticas podem ser encaminhadas para marcosfs2006@gmail.com
